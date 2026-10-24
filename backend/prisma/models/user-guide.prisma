@@ -1,0 +1,136 @@
+enum UserRole {
+  TRAVELER
+  GUIDE
+  ADMIN
+}
+
+enum AuthMethod {
+  PASSWORD
+  GOOGLE
+}
+
+model User {
+  id             String     @id @default(uuid())
+  email          String     @unique
+  passwordHash   String?
+  authMethod     AuthMethod @default(PASSWORD)
+  authProviderId String?    @unique
+  name           String
+  avatarUrl      String?
+  role           UserRole   @default(TRAVELER)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  preferences Json?
+
+  // Premium is granted by an admin or by redeeming a referral code; null premiumUntil on PREMIUM = no end date
+  plan         PlanTier  @default(FREE)
+  premiumUntil DateTime?
+  lastSeenAt   DateTime?
+
+  referralCodesCreated ReferralCode[]       @relation("ReferralCodeCreator")
+  referralRedemptions  ReferralRedemption[]
+
+  guideProfile             Guide?
+  ownedGroups              Group[]            @relation("OwnedGroups")
+  tripsOwned               Trip[]             @relation("TripOwner")
+  collabs                  TripCollaborator[]
+  bookings                 Booking[]
+  ratingsGiven             Rating[]           @relation("RatingFromUser")
+  messagesSent             Message[]          @relation("MessageFromUser")
+  swipes                   Swipe[]            @relation("SwipeFromUser")
+  matches                  Match[]            @relation("MatchUser")
+  groupMemberships         GroupMembership[]
+  reviewedGroupMemberships GroupMembership[]  @relation("ReviewedGroupMemberships")
+  groupMessages            GroupMessage[]
+  notifications            Notification[]     @relation("UserNotifications")
+  notificationActions      Notification[]     @relation("NotificationActors")
+}
+
+model Guide {
+  id             String   @id @default(uuid())
+  userId         String   @unique
+  headline       String?
+  bio            String?
+  rateHourly     Decimal? @db.Decimal(10, 2)
+  rateDaily      Decimal? @db.Decimal(10, 2)
+  locationCityId String?
+  contactEmail   String?
+  contactPhone   String?
+  verified       Boolean  @default(false)
+  ratingAvg      Decimal? @db.Decimal(3, 2)
+  ratingCount    Int      @default(0)
+
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  locationCity City?           @relation("CityGuides", fields: [locationCityId], references: [id])
+  media        GuideMedia[]
+  pastTrips    GuidePastTrip[]
+  ratings      Rating[]
+  messages     Message[]       @relation("MessageToGuide")
+  swipesTarget Swipe[]         @relation("SwipeToGuide")
+  matches      Match[]         @relation("MatchGuide")
+}
+
+model GuideMedia {
+  id       String    @id @default(uuid())
+  guideId  String
+  type     MediaType
+  url      String
+  caption  String?
+  position Int       @default(0)
+
+  guide Guide @relation(fields: [guideId], references: [id], onDelete: Cascade)
+
+  @@index([guideId])
+}
+
+model GuidePastTrip {
+  id        String    @id @default(uuid())
+  guideId   String
+  title     String
+  location  String
+  startDate DateTime?
+  endDate   DateTime?
+  summary   String?
+  mediaUrl  String?
+
+  guide Guide @relation(fields: [guideId], references: [id], onDelete: Cascade)
+
+  @@index([guideId])
+}
+
+enum PlanTier {
+  FREE
+  PREMIUM
+}
+
+/// A code an admin hands out; each user who redeems it gets premiumDays of Premium
+model ReferralCode {
+  id              String    @id @default(uuid())
+  code            String    @unique
+  label           String?
+  premiumDays     Int       @default(30)
+  maxUses         Int?
+  usedCount       Int       @default(0)
+  active          Boolean   @default(true)
+  expiresAt       DateTime?
+  createdByUserId String?
+  createdAt       DateTime  @default(now())
+
+  createdBy   User?                @relation("ReferralCodeCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  redemptions ReferralRedemption[]
+}
+
+model ReferralRedemption {
+  id           String   @id @default(uuid())
+  codeId       String
+  userId       String
+  premiumUntil DateTime
+  redeemedAt   DateTime @default(now())
+
+  code ReferralCode @relation(fields: [codeId], references: [id], onDelete: Cascade)
+  user User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([codeId, userId])
+  @@index([userId])
+}

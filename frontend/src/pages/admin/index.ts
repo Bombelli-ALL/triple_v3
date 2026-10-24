@@ -1,0 +1,7 @@
+export { default as AdminDashboard } from './Dashboard'
+export { default as AdminUsers } from './Users'
+export { default as AdminTrips } from './Trips'
+export { default as AdminAnalytics } from './Analytics'
+export { default as AdminSettings } from './Settings'
+export { default as AdminResourceList } from './ResourceList'
+export { default as AdminReferrals } from './Referrals'

@@ -1,0 +1,234 @@
+enum MediaType {
+  PHOTO
+  VIDEO
+}
+
+enum InfoScope {
+  REGION
+  CITY
+  ATTRACTION
+}
+
+model Region {
+  id          String  @id @default(uuid())
+  name        String
+  country     String
+  slug        String  @unique
+  description String?
+  coverImage  String?
+
+  cities     City[]
+  infoBlocks InfoBlock[] @relation("RegionInfo")
+}
+
+model City {
+  id          String   @id @default(uuid())
+  regionId    String
+  name        String
+  slug        String   @unique
+  lat         Decimal? @db.Decimal(9, 6)
+  lng         Decimal? @db.Decimal(9, 6)
+  timezone    String?
+  description String?
+  coverImage  String?
+
+  region      Region       @relation(fields: [regionId], references: [id], onDelete: Cascade)
+  attractions Attraction[]
+  guides      Guide[]      @relation("CityGuides")
+  trips       Trip[]
+  groups      Group[]
+  infoBlocks  InfoBlock[]  @relation("CityInfo")
+
+  @@index([regionId])
+}
+
+model Group {
+  id          String   @id @default(uuid())
+  cityId      String
+  ownerUserId String
+  title       String
+  description String?
+  coverImage  String?
+  startDate   DateTime
+  endDate     DateTime
+  capacity    Int
+  budgetMin   Decimal  @db.Decimal(12, 2)
+  budgetMax   Decimal  @db.Decimal(12, 2)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
+
+  city          City              @relation(fields: [cityId], references: [id], onDelete: Cascade)
+  owner         User              @relation("OwnedGroups", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  memberships   GroupMembership[]
+  messages      GroupMessage[]
+  notifications Notification[]
+
+  @@index([cityId])
+  @@index([ownerUserId])
+  @@index([startDate])
+  @@index([endDate])
+}
+
+enum GroupMembershipStatus {
+  PENDING
+  MEMBER
+  REJECTED
+}
+
+enum GroupMembershipRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+model GroupMembership {
+  groupId          String
+  userId           String
+  status           GroupMembershipStatus @default(PENDING)
+  role             GroupMembershipRole   @default(MEMBER)
+  requestedAt      DateTime              @default(now())
+  respondedAt      DateTime?
+  reviewedByUserId String?
+  updatedAt        DateTime              @default(now()) @updatedAt
+
+  group      Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user       User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reviewedBy User? @relation("ReviewedGroupMemberships", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+
+  @@id([groupId, userId])
+  @@index([userId])
+  @@index([status])
+  @@index([reviewedByUserId])
+}
+
+model GroupMessage {
+  id        String   @id @default(uuid())
+  groupId   String
+  userId    String
+  message   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([groupId, createdAt])
+  @@index([userId])
+}
+
+enum NotificationType {
+  GROUP_JOIN_REQUEST
+  GROUP_REQUEST_APPROVED
+  GROUP_REQUEST_REJECTED
+  GROUP_REQUEST_RESOLVED
+  GROUP_ROLE_CHANGED
+  GROUP_MEMBER_REMOVED
+  GROUP_UPDATED
+}
+
+model Notification {
+  id               String           @id @default(uuid())
+  userId           String
+  actorUserId      String?
+  groupId          String?
+  membershipUserId String?
+  type             NotificationType
+  title            String
+  message          String
+  data             Json?
+  readAt           DateTime?
+  createdAt        DateTime         @default(now())
+
+  user  User   @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  actor User?  @relation("NotificationActors", fields: [actorUserId], references: [id], onDelete: SetNull)
+  group Group? @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([groupId])
+  @@index([membershipUserId])
+}
+
+model Attraction {
+  id              String   @id @default(uuid())
+  cityId          String
+  name            String
+  slug            String   @unique
+  type            String?
+  lat             Decimal? @db.Decimal(9, 6)
+  lng             Decimal? @db.Decimal(9, 6)
+  description     String?
+  avgPrice        Decimal? @db.Decimal(10, 2)
+  durationMinutes Int?
+  coverImage      String?
+  /// sights | culture | nature | food | cafe — drives the dashboard tabs
+  category        String?
+
+  city       City               @relation(fields: [cityId], references: [id], onDelete: Cascade)
+  media      AttractionMedia[]
+  tags       AttractionTagMap[]
+  infoBlocks InfoBlock[]        @relation("AttractionInfo")
+
+  @@index([cityId])
+  @@index([cityId, category])
+}
+
+model AttractionMedia {
+  id           String    @id @default(uuid())
+  attractionId String
+  type         MediaType
+  url          String
+  caption      String?
+  position     Int       @default(0)
+
+  attraction Attraction @relation(fields: [attractionId], references: [id], onDelete: Cascade)
+
+  @@index([attractionId])
+}
+
+model Tag {
+  id   String @id @default(uuid())
+  name String @unique
+
+  attractions AttractionTagMap[]
+}
+
+model AttractionTagMap {
+  attractionId String
+  tagId        String
+
+  attraction Attraction @relation(fields: [attractionId], references: [id], onDelete: Cascade)
+  tag        Tag        @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([attractionId, tagId])
+}
+
+model InfoBlock {
+  id           String    @id @default(uuid())
+  scope        InfoScope
+  regionId     String?
+  cityId       String?
+  attractionId String?
+  title        String
+  content      String
+  category     String?
+  language     String?   @default("en")
+
+  region     Region?     @relation("RegionInfo", fields: [regionId], references: [id], onDelete: Cascade)
+  city       City?       @relation("CityInfo", fields: [cityId], references: [id], onDelete: Cascade)
+  attraction Attraction? @relation("AttractionInfo", fields: [attractionId], references: [id], onDelete: Cascade)
+
+  @@index([regionId])
+  @@index([cityId])
+  @@index([attractionId])
+}
+
+model Translation {
+  id         String @id @default(uuid())
+  entityType String
+  entityId   String
+  language   String
+  field      String
+  value      String
+
+  @@index([entityType, entityId])
+}

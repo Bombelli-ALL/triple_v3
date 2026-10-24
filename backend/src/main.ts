@@ -1,0 +1,40 @@
+import "dotenv/config";
+import { NestFactory } from "@nestjs/core";
+import { AppModule } from "./app.module";
+import { ValidationPipe } from "@nestjs/common";
+import cookieParser from "cookie-parser";
+import { NestExpressApplication } from "@nestjs/platform-express";
+import { ApiExceptionFilter } from "./common/filters/api-exception.filter";
+import express from "express";
+
+async function bootstrap() {
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const allowedOrigins = process.env.CORS_ORIGINS
+    ? process.env.CORS_ORIGINS.split(",")
+        .map((origin) => origin.trim())
+        .filter(Boolean)
+    : null;
+
+  app.use(cookieParser());
+  app.use(express.json({ limit: "12mb" }));
+  app.use(express.urlencoded({ extended: true, limit: "12mb" }));
+
+  app.enableCors({
+    origin: allowedOrigins && allowedOrigins.length ? allowedOrigins : true,
+    credentials: true,
+  });
+  app.setGlobalPrefix("api");
+
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: false,
+      transform: true,
+    }),
+  );
+  app.useGlobalFilters(new ApiExceptionFilter());
+
+  await app.listen(process.env.PORT ?? 3000);
+}
+
+bootstrap();

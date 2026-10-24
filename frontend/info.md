@@ -1,0 +1,4 @@
+- OSRM – free, open‑source routing
+- npm install @mapbox/polyline (encoding the route array into a small string)
+- we need an embedding model to transform route waypoints into vectors for matching
+- pgvector to store vectors

@@ -1,0 +1,799 @@
+TRIPPPLE FRONTEND
+AI HANDOFF + CODEBASE UNDERSTANDING DOCUMENT
+
+Purpose:
+This file is designed so any AI model can read one document and quickly understand:
+- what this project is
+- what is actually present in this workspace
+- how the app is structured
+- where key logic lives
+- which parts are real vs mock
+- which assumptions are safe vs unsafe
+- how to answer questions or make edits with minimal confusion
+
+Use this as the primary onboarding context before touching code.
+
+
+================================================================
+1. EXECUTIVE SUMMARY
+================================================================
+
+Project name:
+Trippple Frontend
+
+What it is:
+A React + Vite + TypeScript frontend for an AI-assisted travel platform.
+
+What the product tries to be:
+A premium travel app that combines:
+- AI travel planning
+- maps and routing
+- collaboration / group trips
+- booking-style flows
+- match/swipe discovery
+- 360 / immersive exploration
+- user/admin dashboards
+
+What this workspace actually contains:
+- frontend only
+- no backend code
+- no database code
+- no server-side AI orchestration code
+
+Important reality:
+The docs in the repo sometimes describe a broader monorepo or backend that is not present in this workspace.
+Another AI should not assume backend code exists locally.
+
+Best mental model:
+"This is a visually ambitious frontend prototype/product shell with real routing and many real API hooks, but some screens still use mock data or demo behavior."
+
+
+================================================================
+2. WHAT AN AI SHOULD ASSUME FIRST
+================================================================
+
+Safe assumptions:
+- This is a client-rendered Vite SPA.
+- React Router drives routing.
+- Tailwind is heavily used for styling.
+- Zustand is used for some client state.
+- Axios is the main HTTP client.
+- Some features are production-like, some are hackathon/demo quality.
+- The UI quality bar is intentionally premium, not generic.
+
+Unsafe assumptions:
+- Do not assume all pages are fully backend-powered.
+- Do not assume Google API features work without valid keys, billing, quota, and API enablement.
+- Do not assume README architecture claims match the actual codebase.
+- Do not assume all role flows are complete.
+- Do not assume admin pages reflect real analytics or real backend data.
+
+
+================================================================
+3. STACK
+================================================================
+
+Framework/runtime:
+- React 19
+- Vite 7
+- TypeScript
+
+UI/styling:
+- Tailwind CSS 4
+- Framer Motion
+- Lucide icons
+- GSAP also exists in deps
+
+State/data:
+- Zustand
+- Axios
+
+Routing:
+- React Router 7
+
+Localization:
+- i18next
+- react-i18next
+
+Maps/geospatial:
+- @react-google-maps/api
+- Leaflet
+- react-leaflet
+
+Other notable libraries:
+- zod
+- react-hot-toast
+- swiper
+- pannellum is installed, but current 360 implementation is not necessarily using it
+
+Primary dependency file:
+- /home/zakariae/hackathon/package.json
+
+
+================================================================
+4. REPO SHAPE
+================================================================
+
+Top-level notable files:
+- /home/zakariae/hackathon/package.json
+- /home/zakariae/hackathon/README.md
+- /home/zakariae/hackathon/APP_OVERVIEW.md
+- /home/zakariae/hackathon/vite.config.ts
+- /home/zakariae/hackathon/.env
+- /home/zakariae/hackathon/.env.example
+
+Important note:
+README.md and APP_OVERVIEW.md describe a larger system than the code currently present in this workspace.
+
+Source tree overview:
+- src/App.tsx
+- src/main.tsx
+- src/components/*
+- src/components/layouts/*
+- src/components/layouts/user/*
+- src/components/wrappers/*
+- src/pages/*
+- src/pages/user/*
+- src/pages/admin/*
+- src/lib/*
+- src/stores/*
+- src/data/*
+- src/locales/*
+
+
+================================================================
+5. ROUTING ARCHITECTURE
+================================================================
+
+Main route definition file:
+- src/App.tsx
+
+Route organization:
+1. Public pages inside public Layout
+2. A standalone maps route
+3. API/auth wrappers
+4. Role-gated admin/user areas
+5. Unauthenticated login/register routes
+6. NotFound catch-all
+
+Route wrappers and roles:
+- RefreshWrapper:
+  runs on load and attempts auth refresh
+
+- ApiInterceptors:
+  adds auth header and handles token refresh-on-401
+
+- AuthWrapper:
+  blocks private routes for unauthenticated users
+
+- RoleWrapper:
+  splits ADMIN vs TRAVELER access
+
+- UnauthWrapper:
+  redirects authenticated users away from login/register
+
+Route summary:
+
+Public:
+- /
+- /pricing
+- /faqs
+- /privacy-policy
+- /terms-of-service
+- /planning/trip-planner
+- /planning/itineraries
+- /planning/travel-guides
+- /summer-parties/beach-events
+- /summer-parties/festival-guide
+- /summer-parties/rooftop-parties
+- /maps
+
+Auth:
+- /login
+- /register
+
+Admin:
+- /admin/dashboard
+- /admin/users
+- /admin/trips
+- /admin/analytics
+- /admin/settings
+
+User:
+- /user/dashboard
+- /user/maps
+- /user/match
+- /user/trips
+- /user/groups
+- /user/groups/:id/chat
+- /user/trip-plan
+- /user/ai
+- /user/leaderboard
+- /user/settings
+- /user/history
+- /user/spots
+- /user/view-360
+
+
+================================================================
+6. RUNTIME ENTRY FLOW
+================================================================
+
+Entry file:
+- src/main.tsx
+
+What main.tsx does:
+- imports global CSS
+- imports Leaflet CSS
+- initializes i18n
+- mounts Toaster
+- mounts App
+
+App flow:
+- BrowserRouter wraps route tree
+- route wrappers run before protected areas
+- user/admin shells render after auth/role checks
+
+
+================================================================
+7. PUBLIC EXPERIENCE
+================================================================
+
+Main public entry:
+- src/pages/Home.tsx
+
+Main landing component:
+- src/components/Hero.tsx
+
+What Hero does:
+- acts as the premium landing interaction
+- handles prompt-like onboarding
+- stores prompt context in sessionStorage
+- routes users into the user experience after onboarding
+
+Important sessionStorage keys written by Hero:
+- heroPrompt
+- heroPromptContext
+- heroPostLoginRoute
+
+These keys are consumed later by user pages such as:
+- dashboard
+- trip plan / trips / agent flows
+
+Meaning:
+The landing page is not just marketing. It feeds downstream user experiences.
+
+
+================================================================
+8. AUTH + SESSION MODEL
+================================================================
+
+Primary file:
+- src/stores/authStore.ts
+
+What it does:
+- register
+- login
+- Google login
+- refresh
+- logout
+- store user + token in Zustand
+- mirror user/token/session markers into cookies
+
+Important security note:
+User and token are stored in client-readable cookies.
+This is workable for a prototype, but is not the preferred hardened production model.
+
+Other auth files:
+- src/components/wrappers/RefreshWrapper.tsx
+- src/components/wrappers/ApiInterceptors.tsx
+- src/components/wrappers/AuthWrapper.tsx
+- src/components/wrappers/RoleWrapper.tsx
+- src/components/wrappers/UnauthWrapper.tsx
+
+Role values seen in code:
+- ADMIN
+- TRAVELER
+- GUIDE
+
+Observed behavior:
+- admin and traveler routes are actively wired
+- guide role exists in types but does not appear to have a full dedicated route tree in this frontend
+
+
+================================================================
+9. API LAYER
+================================================================
+
+Core Axios file:
+- src/lib/api.ts
+
+Behavior:
+- resolves API base URL from env
+- uses local /api proxy style on localhost when appropriate
+- otherwise can fall back to a hosted Railway backend URL
+
+Hero/AI helper:
+- src/lib/agent.ts
+
+Travel/group helper layer:
+- src/lib/travelApi.ts
+
+Important note:
+`travelApi.ts` is one of the strongest typed integration layers in the repo.
+If another AI is asked to work on groups, notifications, bookings, or city APIs, start there first.
+
+
+================================================================
+10. USER APP SHELL
+================================================================
+
+Main shell:
+- src/components/layouts/user/UserLayout.tsx
+
+What UserLayout composes:
+- TopBar
+- Sidebar on desktop
+- MobileDrawer on smaller screens
+- BottomNav on mobile
+- AgentBubble on non-mobile
+
+Important layout detail:
+The user shell uses nested flex + overflow patterns.
+Mobile overflow issues often come from the combination of:
+- UserLayout main container
+- page-level height constraints
+- page-level overflow-hidden usage
+
+If fixing mobile scroll bugs:
+always inspect both:
+- page component
+- UserLayout
+
+
+================================================================
+11. USER TOP BAR / NOTIFICATIONS
+================================================================
+
+Primary file:
+- src/components/layouts/user/TopBar.tsx
+
+What it includes:
+- breadcrumb / branding
+- search bar on desktop
+- notifications surface
+- profile menu
+- mobile navigation links within profile dropdown
+
+Notifications:
+- fetched via listNotifications()
+- unread count badge
+- mark single as read
+- mark all as read
+- click can navigate into group context
+
+Important note:
+This file has gone through notification UI work and motion tweaks.
+If asked about notification UX, this is the file to inspect first.
+
+
+================================================================
+12. USER FEATURE PAGES
+================================================================
+
+12.1 Dashboard
+- src/pages/user/Dashboard.tsx
+
+Reality:
+- polished UI
+- uses prompt context from sessionStorage
+- computes some stats from local dummy data rather than fully live backend state
+
+Interpretation:
+- dashboard is partly experiential/demo-driven
+
+12.2 Groups
+- src/pages/user/Groups.tsx
+
+Reality:
+- one of the strongest real-data pages
+- uses many methods from src/lib/travelApi.ts
+- includes discovery, membership, management, request handling
+
+Interpretation:
+- best place to look for more mature API-connected product logic
+
+12.3 Match
+- src/pages/user/Match.tsx
+
+Reality:
+- Google Places search-driven discovery
+- falls back to local mock swipe data
+
+Interpretation:
+- mixed real + fallback behavior
+
+12.4 Maps
+- src/pages/user/Maps.tsx
+
+Reality:
+- large, complex, map-heavy file
+- one of the most operationally sensitive files in the app
+
+Interpretation:
+- another AI should inspect carefully before editing
+
+12.5 TripPlan
+- src/pages/user/TripPlan.tsx
+
+Reality:
+- heavy page mixing prompt context, local seeds, Google-related enrichment, route info, and UI composition
+
+12.6 Trips
+- src/pages/user/Trips.tsx
+
+Reality:
+- broad trip/transport/booking style page
+- contains substantial state logic and some action routing from agent flows
+
+12.7 Leaderboard
+- src/pages/user/Leaderboard.tsx
+
+Reality:
+- fetches leaderboard if possible
+- falls back to demo data if request fails
+
+12.8 AI
+- src/pages/user/AI.tsx
+
+Reality:
+- user-facing AI planner page
+
+12.9 Spots
+- src/pages/user/Spots.tsx
+
+Reality:
+- location/places discovery and persistence behavior
+
+12.10 View360
+- src/pages/user/View360.tsx
+
+Reality:
+- currently API-dependent Street View-style experience
+- historically this area has been unstable depending on:
+  - Google key
+  - API enablement
+  - quota
+  - billing
+  - actual Street View coverage
+
+Important:
+Another AI should not promise that "all places will work" unless Google-side constraints are confirmed.
+
+
+================================================================
+13. ADMIN FEATURE PAGES
+================================================================
+
+Admin files:
+- src/pages/admin/Dashboard.tsx
+- src/pages/admin/Users.tsx
+- src/pages/admin/Trips.tsx
+- src/pages/admin/Analytics.tsx
+- src/pages/admin/Settings.tsx
+
+Reality:
+- admin area exists structurally
+- at least some admin surfaces are mostly presentational/static rather than fully data-driven
+
+Most important caveat:
+- admin dashboard uses static demo data
+
+
+================================================================
+14. AI / CHAT SURFACES
+================================================================
+
+Public chatbot:
+- src/components/ChatBot.tsx
+- posts to /agent/chat
+
+User AI helper:
+- src/components/layouts/user/AgentBubble.tsx
+- uses requestHeroAgent from src/lib/agent.ts
+
+Hero agent helper:
+- src/lib/agent.ts
+
+Important distinction:
+- there are multiple AI surfaces in this frontend
+- they are not all the same
+- one is public chatbot
+- one is user-side bubble
+- one is landing prompt flow into dashboard/trip context
+
+
+================================================================
+15. I18N / LOCALIZATION
+================================================================
+
+Primary file:
+- src/lib/i18n.ts
+
+Locales:
+- src/locales/en/translation.json
+- src/locales/fr/translation.json
+- src/locales/ar/translation.json
+- src/locales/es/translation.json
+
+Current languages:
+- en
+- fr
+- ar
+- es
+
+Important note:
+A support notice from i18next/Locize was explicitly disabled in config.
+
+
+================================================================
+16. MOCK VS REAL MATRIX
+================================================================
+
+Mostly real / API-driven:
+- auth flows
+- groups page
+- notifications
+- many helper functions in travelApi.ts
+
+Mixed:
+- match
+- leaderboard
+- trips / some travel flows
+- AI surfaces depending on backend availability
+
+Mostly demo/presentational:
+- admin dashboard
+- some dashboard stats
+- some fallback UI states
+
+Rule for other AIs:
+If asked whether a feature is "implemented", answer carefully:
+- "UI implemented" is not the same as "fully backed by live backend data"
+
+
+================================================================
+17. ENVIRONMENT VARIABLES
+================================================================
+
+Observed in .env:
+- VITE_PUBLIC_API_URL
+- VITE_GOOGLE_CLIENT_ID
+- VITE_GOOGLE_PLACES_API_KEY
+- VITE_GOOGLE_ROUTES_API_KEY
+- VITE_GOOGLE_GEOCODING_API_KEY
+- VITE_GOOGLE_MAPS_API_KEY
+- VITE_GOOGLE_PLACES_SEARCH_KEY
+
+Important warnings:
+- .env.example is incomplete compared to actual app requirements
+- current app behavior depends on env vars more than the example file suggests
+- Google-keyed features can fail because of cloud console config, not frontend bugs
+
+For Google-dependent features, another AI must consider:
+- is the correct API enabled?
+- is billing enabled?
+- are referrer restrictions correct?
+- is the endpoint allowed for that key?
+- does Street View or Places coverage exist at the target location?
+
+
+================================================================
+18. BUILD / TEST / QUALITY STATUS
+================================================================
+
+Build:
+- npm run build passes
+
+Lint:
+- full project lint is not fully clean
+- common issues:
+  - explicit any
+  - effect dependency warnings
+  - setState in effects warnings/errors
+  - some unused vars
+
+Tests:
+- no meaningful project test suite found
+- no established frontend unit/e2e testing setup for the app code
+
+Implication:
+Any AI making non-trivial edits should self-verify with:
+- file-level lint if possible
+- npm run build
+
+
+================================================================
+19. DESIGN LANGUAGE
+================================================================
+
+Project design direction:
+- premium
+- travel/lifestyle oriented
+- animated
+- rounded
+- orange as main accent
+- high polish rather than utility-first blandness
+
+When editing UI:
+- avoid generic enterprise dashboard style
+- avoid dull default card systems
+- preserve bold spacing, shadows, gradients, and premium feeling
+- mobile layout matters a lot
+
+If asked to redesign something:
+- cleaner is good
+- but "clean" should still feel intentional and branded, not empty or generic
+
+
+================================================================
+20. HIGH-RISK EDITING ZONES
+================================================================
+
+Be careful when editing:
+- src/pages/user/Maps.tsx
+- src/pages/user/TripPlan.tsx
+- src/pages/user/Trips.tsx
+- src/components/layouts/user/UserLayout.tsx
+- src/components/layouts/user/TopBar.tsx
+- src/components/Hero.tsx
+- src/stores/authStore.ts
+
+Why:
+- these files are state-heavy or highly connected to UX flow
+- they affect auth, navigation, session state, maps, or core entry flow
+
+
+================================================================
+21. TASK-TO-FILE LOOKUP TABLE
+================================================================
+
+If asked about login/auth:
+- src/stores/authStore.ts
+- src/components/wrappers/*
+- src/pages/auth/*
+
+If asked about notifications:
+- src/components/layouts/user/TopBar.tsx
+- src/lib/travelApi.ts
+
+If asked about mobile layout issues:
+- src/components/layouts/user/UserLayout.tsx
+- page component causing issue
+- BottomNav and TopBar if overlay-related
+
+If asked about landing flow / prompt flow:
+- src/components/Hero.tsx
+- src/pages/Home.tsx
+
+If asked about groups:
+- src/pages/user/Groups.tsx
+- src/lib/travelApi.ts
+
+If asked about maps:
+- src/pages/user/Maps.tsx
+
+If asked about 360:
+- src/pages/user/View360.tsx
+
+If asked about i18n:
+- src/lib/i18n.ts
+- src/locales/*
+
+If asked about admin:
+- src/pages/admin/*
+
+
+================================================================
+22. PRACTICAL RULES FOR ANOTHER AI
+================================================================
+
+Before answering a question:
+1. Determine whether the question is about:
+   - structure
+   - runtime behavior
+   - data source
+   - UI
+   - bug fixing
+   - external service failure
+2. If it touches Google APIs, do not blame only React without checking:
+   - key
+   - enabled APIs
+   - quota/billing
+   - coverage
+3. If it touches auth or route access, inspect wrappers and authStore first.
+4. If it touches mobile layout, inspect both the page and UserLayout.
+5. If it touches notifications or top-right interactions, inspect TopBar first.
+
+Before editing:
+1. Identify whether the feature is mock-backed or API-backed.
+2. Avoid breaking visual quality.
+3. Prefer targeted edits to broad rewrites unless asked.
+4. Run build after meaningful changes.
+
+When describing the project:
+Prefer:
+"Frontend-only travel app with mixed live/demo features."
+Avoid:
+"Fully production-ready travel platform."
+
+
+================================================================
+23. KNOWN CAVEATS / TRAPS
+================================================================
+
+Trap 1:
+Repo docs imply backend presence.
+Reality:
+backend is not in this workspace.
+
+Trap 2:
+A page looking complete visually does not mean it is fully live-data backed.
+
+Trap 3:
+Google errors may be cloud-config issues, not frontend logic bugs.
+
+Trap 4:
+Several screens use sessionStorage-driven context, so some behavior depends on prior flow from Hero.
+
+Trap 5:
+Notification/profile overlays and mobile shells are sensitive to overflow and animation changes.
+
+
+================================================================
+24. BEST ONE-PARAGRAPH DESCRIPTION FOR OTHER AI MODELS
+================================================================
+
+Trippple is a frontend-only React/Vite travel app prototype with premium UI, AI-assisted planning surfaces, auth, user/admin route trees, groups, maps, trip planning, and notifications. The workspace contains real route/auth/API integration in several areas, but also includes demo or fallback logic in some pages such as admin dashboard, dashboard stats, match fallback data, and leaderboard fallback behavior. Google-powered features depend heavily on external API configuration and coverage. Start analysis from src/App.tsx, src/lib/api.ts, src/stores/authStore.ts, src/components/Hero.tsx, src/components/layouts/user/UserLayout.tsx, src/components/layouts/user/TopBar.tsx, and src/lib/travelApi.ts.
+
+
+================================================================
+25. PROMPT TEMPLATE FOR ANOTHER AI
+================================================================
+
+Suggested prompt to give another AI with this file:
+
+"Read AI_PROJECT_CONTEXT.txt first and treat it as the source of truth for the frontend structure. Then answer my question using the codebase in /home/zakariae/hackathon. Be careful to distinguish between real API-backed features and mock/demo behavior. If the issue touches auth, notifications, mobile layout, maps, or Google APIs, inspect the relevant files before making claims."
+
+
+================================================================
+26. TASK-SPECIFIC PROMPT ADD-ONS
+================================================================
+
+For bug fixing:
+"Identify the exact file(s) involved, explain whether the bug is frontend-only or possibly external-service related, then propose or implement the smallest safe fix."
+
+For architecture explanation:
+"Explain the runtime structure, route layering, state flow, and where the data really comes from."
+
+For UI redesign:
+"Preserve the premium travel aesthetic. Avoid generic dashboard styling. Prioritize mobile responsiveness."
+
+For API confusion:
+"Tell me whether this page is truly backend-driven, partially mocked, or mostly static."
+
+For onboarding:
+"Summarize the top 10 files I should understand first and why."
+
+
+================================================================
+27. FINAL TRUTH
+================================================================
+
+The single best high-confidence description of this repo is:
+
+"A polished frontend travel product with real routing and several live integrations, but still carrying hackathon-era mixed fidelity across data sources and service dependencies."
+
+That description is safer and more accurate than either:
+- "just a mock"
+- "fully production-ready"

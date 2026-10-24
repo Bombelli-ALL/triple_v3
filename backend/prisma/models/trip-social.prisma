@@ -1,0 +1,177 @@
+enum TripStatus {
+  DRAFT
+  ACTIVE
+  COMPLETED
+  CANCELED
+}
+
+enum CollaboratorRole {
+  OWNER
+  EDITOR
+  VIEWER
+}
+
+enum BookingType {
+  FLIGHT
+  STAY
+  EXPERIENCE
+  RENTAL
+  GUIDE
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELED
+}
+
+enum SwipeDirection {
+  LIKE
+  PASS
+}
+
+enum MatchStatus {
+  ACTIVE
+  BLOCKED
+}
+
+model Trip {
+  id          String     @id @default(uuid())
+  ownerUserId String
+  title       String
+  description String?
+  cityId      String?
+  status      TripStatus @default(DRAFT)
+  startDate   DateTime?
+  endDate     DateTime?
+  budgetTotal Decimal?   @db.Decimal(12, 2)
+  currency    String?    @default("USD")
+  // Full planner payload (days, stops, coordinates) so a saved trip reopens exactly as generated
+  plan        Json?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  owner         User               @relation("TripOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  city          City?              @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  collaborators TripCollaborator[]
+  items         TripItem[]
+  bookings      Booking[]
+  ratings       Rating[]
+  messages      Message[]
+
+  @@index([ownerUserId])
+  @@index([cityId])
+}
+
+model TripCollaborator {
+  tripId   String
+  userId   String
+  role     CollaboratorRole @default(VIEWER)
+  joinedAt DateTime         @default(now())
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([tripId, userId])
+}
+
+model TripItem {
+  id       String    @id @default(uuid())
+  tripId   String
+  day      Int?
+  title    String
+  location String?
+  time     DateTime?
+  notes    String?
+  type     String?
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@index([tripId])
+}
+
+model Booking {
+  id              String        @id @default(uuid())
+  tripId          String?
+  userId          String
+  itemName        String        @default("Untitled Booking")
+  type            BookingType
+  provider        String?
+  externalRef     String?
+  basePrice       Decimal       @default(0) @db.Decimal(12, 2)
+  commissionPct   Decimal       @default(0.10) @db.Decimal(5, 2)
+  commissionValue Decimal       @default(0) @db.Decimal(12, 2)
+  currency        String?       @default("USD")
+  status          BookingStatus @default(PENDING)
+  startDate       DateTime?
+  endDate         DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @default(now()) @updatedAt
+
+  trip Trip? @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tripId])
+  @@index([userId])
+}
+
+model Rating {
+  id         String   @id @default(uuid())
+  fromUserId String
+  guideId    String
+  tripId     String?
+  score      Int
+  comment    String?
+  createdAt  DateTime @default(now())
+
+  fromUser User  @relation("RatingFromUser", fields: [fromUserId], references: [id], onDelete: Cascade)
+  guide    Guide @relation(fields: [guideId], references: [id], onDelete: Cascade)
+  trip     Trip? @relation(fields: [tripId], references: [id], onDelete: SetNull)
+
+  @@index([guideId])
+  @@index([fromUserId])
+}
+
+model Message {
+  id         String   @id @default(uuid())
+  fromUserId String
+  toGuideId  String
+  tripId     String?
+  message    String
+  status     String?
+  createdAt  DateTime @default(now())
+
+  fromUser User  @relation("MessageFromUser", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toGuide  Guide @relation("MessageToGuide", fields: [toGuideId], references: [id], onDelete: Cascade)
+  trip     Trip? @relation(fields: [tripId], references: [id], onDelete: SetNull)
+
+  @@index([toGuideId])
+}
+
+model Swipe {
+  id            String         @id @default(uuid())
+  fromUserId    String
+  targetUserId  String?
+  targetGuideId String?
+  direction     SwipeDirection
+  createdAt     DateTime       @default(now())
+
+  fromUser    User   @relation("SwipeFromUser", fields: [fromUserId], references: [id], onDelete: Cascade)
+  targetGuide Guide? @relation("SwipeToGuide", fields: [targetGuideId], references: [id], onDelete: Cascade)
+
+  @@index([fromUserId])
+}
+
+model Match {
+  id           String      @id @default(uuid())
+  userId       String
+  targetUserId String?
+  guideId      String?
+  status       MatchStatus @default(ACTIVE)
+  createdAt    DateTime    @default(now())
+
+  user  User   @relation("MatchUser", fields: [userId], references: [id], onDelete: Cascade)
+  guide Guide? @relation("MatchGuide", fields: [guideId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}

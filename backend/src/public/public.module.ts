@@ -1,0 +1,41 @@
+import { Module } from "@nestjs/common";
+import { ServicesModule } from "@/services/services.module";
+import { RegionPublicController } from "./controllers/region.controller";
+import { CategoryPublicController } from "./controllers/category.controller";
+import { CityPublicController } from "./controllers/city.controller";
+import { PlacePublicController } from "./controllers/place.controller";
+import { TripPublicController } from "./controllers/trip-public.controller";
+import { MyTripsController } from "./controllers/my-trips.controller";
+import { MeController } from "./controllers/me.controller";
+import { RatingPublicController } from "./controllers/rating.controller";
+import { UserPublicController } from "./controllers/user.controller";
+import { AgentPublicController } from "./controllers/agent.controller";
+import { BookingPublicController } from "./controllers/booking.controller";
+import { GroupPublicController } from "./controllers/group-public.controller";
+import { GamificationPublicController } from "./controllers/gamification.controller";
+import { UserGroupsPublicController } from "./controllers/user-groups.controller";
+import { UserNotificationsController } from "./controllers/user-notifications.controller";
+import { FlightsPublicController } from "./controllers/flights.controller";
+
+@Module({
+  imports: [ServicesModule],
+  controllers: [
+    RegionPublicController,
+    CategoryPublicController,
+    CityPublicController,
+    PlacePublicController,
+    TripPublicController,
+    MyTripsController,
+    MeController,
+    RatingPublicController,
+    UserPublicController,
+    AgentPublicController,
+    BookingPublicController,
+    GroupPublicController,
+    GamificationPublicController,
+    UserGroupsPublicController,
+    UserNotificationsController,
+    FlightsPublicController,
+  ],
+})
+export class PublicModule {}
